@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name = 'ck_direct_uploads',
+    name = 'ck_direct_upload',
     version='0.0.1',
     description = 'Directly move large files as ressources into Ckan',
     url = 'https://github.com/eawag-rdm/ck_direct_upload',

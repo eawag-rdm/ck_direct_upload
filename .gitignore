@@ -1,6 +1,9 @@
 # Virtual environment
 v3/
 
+# Test data
+tests/data/largefiles/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
