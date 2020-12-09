@@ -25,31 +25,75 @@
 
 """ck_direct_upload
 
+Copies (large) files via scp from a SOURCEPATH to the ckan storage
+path for resources on SERVER.
+
+SOURCEPATH has to contain a file "direct_upload.toml". See the example
+file in this program's distribution for documentation. The user of
+this program needs passwordless ssh-access to SERVER and write
+permissions for the CKAN storage path on that server.
+
+Small dummy replacements for the files in SOURCEPATH are submitted
+through the FileStore API. In a second step, the dummy-files on the
+filesystem are replaced with the real files copied SOURCEPATH. All
+resources need to be in SOURCEPATH, sub-directories are ignored.
+
 Usage:
-    ck_direct_upload [-s SERVER] [-a APIKEYVAR] PATH
+    ck_direct_upload [-s SERVER] [-a APIKEYVAR] SOURCEPATH
     ck_direct_upload -h
 
 Options:
     --help -h       This help.
-    -s SERVER       Server [default: https://data.eawag.ch]
-    -a APIKEYVAR    Env. variable with API-key [default: CKAN_APIKEY_PROD1]
+    -s SERVER       CKAN server. Overrides the (optional) specification in
+                    PATH/direct_upload.toml (default: https://data.eawag.ch)
+    -a APIKEYVAR    Env. variable with API-key. Overrides the (optional)
+                    specification in PATH/direct_upload.toml
+                    (default: CKAN_APIKEY_PROD1)
 
 Arguments:
-    PATH    Path to the source diretory with ressources.
+    SOURCEPATH    Path to the source directory with ressources.
 
 """
 
+from tomlkit import parse
 from docopt import docopt
 import os.path
+import io
 
+defaultconfig = {
+    'SERVER': 'https://data.eawag.ch',
+    'APIKEYVAR': 'CKAN_APIKEY_PROD1'}
+  
 
-def getargs(args):
+def _getargs(args):
     arga = docopt(__doc__, argv=args)
     return arga
+    
+def _readconfig(path, fn='direct_upload.toml'):
+    with open(os.path.join(path, fn), 'r') as f:
+        config = parse(f.read())
+    return config
+        
+def buildconfig(args):
+    # map docopt <-> configfile parameters
+    m = {'-s': 'SERVER', '-a': 'APIKEYVAR', 'SOURCEPATH':'SOURCEPATH'}
+    cliargs = _getargs(args)
+    config = {m[k]: v for (k, v) in cliargs.items() if k != '--help'}
+    
+    try:
+        configfileargs = _readconfig(config['SOURCEPATH'])
+    except FileNotFoundError:
+        pass
+    else:
+        config.update({k: configfileargs.get(k) for (k, v) in config.items()
+                       if v is None})
+        
+    config.update({k: defaultconfig[k] for (k, v) in config.items()
+                   if v is None})
+                
+    return config
 
 def readsource(path):
     if not os.path.isdir(path):
         raise ValueError('Source directory "{}" not found'.format(path))
-    ## Exit if no toml file or no package specified in toml.
-    
-    
+              

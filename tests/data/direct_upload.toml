@@ -1,0 +1,5 @@
+# The CKAN server
+SERVER = "http://localhost:5000"
+
+# Environment variable containing API-key
+APIKEYVAR = "TEST_CKAN_APIKEY"
