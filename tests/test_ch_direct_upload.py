@@ -12,7 +12,6 @@ TESTSOURCE_LARGE = os.path.join(str(THISDIR), 'data/largefiles/')
 TESTSOURCE_EMPTY = os.path.join(str(THISDIR), 'data/empty/')
 
 
-
 def test__getargs():
     with pt.raises(SystemExit):
         res = du._getargs(["-h"])
@@ -26,12 +25,7 @@ def test__getargs():
     res = du._getargs(['/the/path/to/hell'])
     assert(res['--help'] is False
            and res['-s'] is None and res['-a'] is None)
- 
-    
-    
-def test_readsource():
-    with pt.raises(ValueError):
-        du.readsource('this/path/not/exist')
+
     
 def test__readconfig():
     res = du._readconfig(TESTSOURCE)
@@ -85,3 +79,34 @@ def test_buildconfig():
     # PKGNAME missing
     with pt.raises(SystemExit):
         conf =  du.buildconfig(['-a', 'apikey', TESTSOURCE_EMPTY])
+
+
+def test_readsource():
+    with pt.raises(ValueError):
+        du.readsource('this/path/not/exist')
+    res = du.readsource(TESTSOURCE_LARGE)
+    assert(res == {
+        '500m': 524288000,
+        'oneg': 1073741824,
+        'onek': 1024,
+        'onem': 1048576
+        })
+    with pt.raises(SystemExit):
+        res = du.readsource(TESTSOURCE_EMPTY)
+    
+
+# This test depends on availibility of specific CKAN server        
+def test_getpackage():
+    pkg_exist = 'empty-test-for-bulk-upload'
+    pkg_nonexist = 'non-existin g and-illegal&package'
+    config = du.buildconfig(['-p', pkg_exist,
+                             '-a', 'CKAN_APIKEY_PROD1',
+                             '-s', 'https://data.eawag.ch',
+                             TESTSOURCE])
+    conn = du._get_conn(config)
+    res = du.getpackage(conn, config)
+    assert(res['name'] == pkg_exist)
+
+    config['PKGNAME'] = pkg_nonexist
+    with pt.raises(ValueError):
+        res = du.getpackage(conn, config)

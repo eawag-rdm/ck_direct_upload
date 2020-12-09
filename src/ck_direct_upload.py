@@ -61,23 +61,29 @@ Arguments:
 
 from tomlkit import parse
 from docopt import docopt
+from ckanapi import RemoteCKAN, errors
 import os.path
 import io
 
 defaultconfig = {
     'SERVER': 'https://data.eawag.ch',
     'APIKEYVAR': 'CKAN_APIKEY_PROD1'}
-  
+
+
+configfilename = 'direct_upload.toml'
+
 
 def _getargs(args):
     arga = docopt(__doc__, argv=args)
     return arga
-    
-def _readconfig(path, fn='direct_upload.toml'):
+
+
+def _readconfig(path, fn=configfilename):
     with open(os.path.join(path, fn), 'r') as f:
         config = parse(f.read())
     return config
-        
+
+
 def buildconfig(args):
     # map docopt <-> configfile parameters
     m = {'-s': 'SERVER', '-a': 'APIKEYVAR', '-p': 'PKGNAME',
@@ -101,7 +107,37 @@ def buildconfig(args):
                 
     return config
 
+
 def readsource(path):
     if not os.path.isdir(path):
         raise ValueError('Source directory "{}" not found'.format(path))
+
+    filenames = [fn for fn in os.listdir(path) if fn != configfilename]
+    if not filenames:
+        print('The source directory {} is empty. Exiting.'.format(path))
+        raise(SystemExit)
+    
+    fileinfo = {fn: os.path.getsize(os.path.join(path, fn)) for fn in filenames}
+    return fileinfo
+
+
+def _get_conn(config):
+    return RemoteCKAN(config['SERVER'], os.environ[config['APIKEYVAR']])
+
+
+def getpackage(conn, config):
+    try:
+        res = conn.call_action('package_show', {'id': config['PKGNAME']})
+    except errors.NotFound:
+        print('The package with the name "{}" doesn\'t exist on {}. Exiting'
+              .format(config['PKGNAME'], config['SERVER']))
+        raise ValueError
+    return res
+    
+                    
+    
+# next:  check pkg has (no resources or one resorce called "dummy")
+
+
+    
               
