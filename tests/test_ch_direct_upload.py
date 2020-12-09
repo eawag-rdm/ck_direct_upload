@@ -16,11 +16,13 @@ TESTSOURCE_EMPTY = os.path.join(str(THISDIR), 'data/empty/')
 def test__getargs():
     with pt.raises(SystemExit):
         res = du._getargs(["-h"])
-    res = du._getargs(['/the/path/to/hell','-a', 'keyenv', '-s', 'somehost'])
+    res = du._getargs(['/the/path/to/hell','-a', 'keyenv', '-p', 'testpkgname',
+                       '-s', 'somehost'])
     assert(res['--help'] is False
            and res['-s'] == 'somehost'
            and res['-a'] == 'keyenv'
-           and res['SOURCEPATH'] == '/the/path/to/hell')
+           and res['SOURCEPATH'] == '/the/path/to/hell'
+           and res['-p'] == 'testpkgname')
     res = du._getargs(['/the/path/to/hell'])
     assert(res['--help'] is False
            and res['-s'] is None and res['-a'] is None)
@@ -34,7 +36,8 @@ def test_readsource():
 def test__readconfig():
     res = du._readconfig(TESTSOURCE)
     assert(res == {'APIKEYVAR': 'TEST_CKAN_APIKEY',
-                   'SERVER': 'http://localhost:5000'})
+                   'SERVER': 'http://localhost:5000',
+                   'PKGNAME': 'test_pkgname'})
 
 
 def test_buildconfig():
@@ -42,34 +45,43 @@ def test_buildconfig():
     conf = du.buildconfig([TESTSOURCE])
     assert(
         conf == {'SOURCEPATH': TESTSOURCE,
-                  'SERVER': 'http://localhost:5000',
-                  'APIKEYVAR': 'TEST_CKAN_APIKEY'})
+                 'SERVER': 'http://localhost:5000',
+                 'APIKEYVAR': 'TEST_CKAN_APIKEY',
+                 'PKGNAME': 'test_pkgname'})
 
     # Both default
-    conf =  du.buildconfig([TESTSOURCE_EMPTY])
+    conf =  du.buildconfig(['-p', 'PackName', TESTSOURCE_EMPTY])
     assert(
         conf == {'SOURCEPATH': TESTSOURCE_EMPTY,
-                  'SERVER': 'https://data.eawag.ch',
-                  'APIKEYVAR': 'CKAN_APIKEY_PROD1'})
+                 'SERVER': 'https://data.eawag.ch',
+                 'APIKEYVAR': 'CKAN_APIKEY_PROD1',
+                 'PKGNAME': 'PackName'})
 
     # SERVER: CLI, APIKEY: default    
-    conf =  du.buildconfig(['-s', 'testserver', TESTSOURCE_EMPTY])
+    conf =  du.buildconfig(['-p', 'Packname', '-s', 'testserver',
+                            TESTSOURCE_EMPTY])
     assert(
         conf == {'SOURCEPATH': TESTSOURCE_EMPTY,
                  'SERVER': 'testserver',
-                 'APIKEYVAR': 'CKAN_APIKEY_PROD1'})
+                 'APIKEYVAR': 'CKAN_APIKEY_PROD1',
+                 'PKGNAME': 'Packname'})
 
     # SERVER: default,  APIKEY: configfile
     conf =  du.buildconfig([TESTSOURCE])
     assert(
         conf == {'SOURCEPATH': TESTSOURCE,
                  'SERVER': 'http://localhost:5000',
-                 'APIKEYVAR': 'TEST_CKAN_APIKEY'})
+                 'APIKEYVAR': 'TEST_CKAN_APIKEY',
+                 'PKGNAME': 'test_pkgname'})
 
     # SERVER: configfile, APIKEY: CLI
     conf =  du.buildconfig(['-a', 'apikey', TESTSOURCE])
     assert(
         conf == {'SOURCEPATH': TESTSOURCE,
                  'SERVER': 'http://localhost:5000',
-                 'APIKEYVAR': 'apikey'})
-
+                 'APIKEYVAR': 'apikey',
+                 'PKGNAME': 'test_pkgname'})
+    
+    # PKGNAME missing
+    with pt.raises(SystemExit):
+        conf =  du.buildconfig(['-a', 'apikey', TESTSOURCE_EMPTY])

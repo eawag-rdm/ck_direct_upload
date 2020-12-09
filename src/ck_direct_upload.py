@@ -8,7 +8,6 @@
 ## Read a directory. Record filenames and sizes. Read metadata.toml.
 ## Record attributes. Required:
 ##    - package_name
-##    - "resource_type". Default: "Dataset".
 
 ## Look for a package with specified name. Exit if it can't be found
 
@@ -39,16 +38,21 @@ filesystem are replaced with the real files copied SOURCEPATH. All
 resources need to be in SOURCEPATH, sub-directories are ignored.
 
 Usage:
-    ck_direct_upload [-s SERVER] [-a APIKEYVAR] SOURCEPATH
+    ck_direct_upload [-s SERVER] [-p PKGNAME] [-a APIKEYVAR] SOURCEPATH
     ck_direct_upload -h
 
 Options:
     --help -h       This help.
-    -s SERVER       CKAN server. Overrides the (optional) specification in
-                    PATH/direct_upload.toml (default: https://data.eawag.ch)
-    -a APIKEYVAR    Env. variable with API-key. Overrides the (optional)
-                    specification in PATH/direct_upload.toml
-                    (default: CKAN_APIKEY_PROD1)
+
+    -s SERVER       CKAN server. Overrides the specification in
+                    PATH/direct_upload.toml (default: https://data.eawag.ch).
+
+    -p PKGNAME      Name of the package. Overrides the specification in
+                    PATH/direct_upload.toml. Must be specified somewhere.
+
+    -a APIKEYVAR    Env. variable with API-key. Overrides the
+                    specification in PATH/direct_upload.toml (default:
+                    CKAN_APIKEY_PROD1).
 
 Arguments:
     SOURCEPATH    Path to the source directory with ressources.
@@ -76,7 +80,8 @@ def _readconfig(path, fn='direct_upload.toml'):
         
 def buildconfig(args):
     # map docopt <-> configfile parameters
-    m = {'-s': 'SERVER', '-a': 'APIKEYVAR', 'SOURCEPATH':'SOURCEPATH'}
+    m = {'-s': 'SERVER', '-a': 'APIKEYVAR', '-p': 'PKGNAME',
+         'SOURCEPATH':'SOURCEPATH'}
     cliargs = _getargs(args)
     config = {m[k]: v for (k, v) in cliargs.items() if k != '--help'}
     
@@ -88,8 +93,11 @@ def buildconfig(args):
         config.update({k: configfileargs.get(k) for (k, v) in config.items()
                        if v is None})
         
-    config.update({k: defaultconfig[k] for (k, v) in config.items()
+    config.update({k: defaultconfig.get(k) for (k, v) in config.items()
                    if v is None})
+    if None in config.values():
+        print('No package-name given. Exiting.')
+        raise SystemExit
                 
     return config
 

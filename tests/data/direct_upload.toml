@@ -3,3 +3,6 @@ SERVER = "http://localhost:5000"
 
 # Environment variable containing API-key
 APIKEYVAR = "TEST_CKAN_APIKEY"
+
+# Package name
+PKGNAME = "test_pkgname"
